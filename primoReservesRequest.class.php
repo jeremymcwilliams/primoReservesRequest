@@ -82,7 +82,7 @@ class primoReservesRequest{
 			}
 			else{$data=$this->useGetData();}
 			
-			var_dump($data);
+			//var_dump($data);
 			
 			
 			return $data;
@@ -130,7 +130,7 @@ class primoReservesRequest{
 		$data=array();
 
   		$title=urldecode($this->clean($_GET["title"]));
-  		$isbn=urldecode($this->clean($_GET["isbn"]));
+  		$isbn=$this->formatISBN(urldecode($this->clean($_GET["isbn"])));
   		$oclcnum=urldecode($this->clean($_GET["oclcnum"]));
   		$author=urldecode($this->clean($_GET["au"]));
   		//echo $title; 
@@ -141,6 +141,12 @@ class primoReservesRequest{
   		$data["author"]=$author;
   		
   		return $data;
+	}
+	
+	function formatISBN($value){
+		$x=explode(" ",$value);
+		return $x[0];
+
 	}
 	
 	function get_local_mmsid(){
@@ -166,7 +172,7 @@ class primoReservesRequest{
 		$loanPeriods=unserialize(LOANPERIODS);
 		?>
 		
-				<form class="pure-form pure-form-aligned" method="POST" action="">
+				<form class="pure-form pure-form-aligned" method="POST" action="index.php">
     <fieldset>
         <div class="pure-control-group">
             <label for="title">Title</label> <?php echo $data["title"];?>
@@ -297,27 +303,54 @@ class primoReservesRequest{
 	
 	function sendNotice(){
 		
-		$title=urldecode($_POST["title"]);
+		$title=html_entity_decode(urldecode($_POST["title"]));
 		$author=urldecode($_POST["author"]);
 		$profLname=urldecode($_POST["profLname"]);
 				
 		$to= CIRCEMAIL;
 		$subject = EMAILSUBJECTPREFIX. "$title";
-		$headers = "From: ". LIBRARYNAME." <".CIRCEMAIL.">" . "\r\n";
-		$message= "Professor $profLname  has submitted the following course reserves request to ". LIBRARYNAME.":\n\n"
-		$message.="Title: $title \n";
-        $message.="Author: $author \n"
+		
+		$headers  = 'MIME-Version: 1.0' . "\r\n";
+		$headers .= 'Content-type: text/html; charset=utf-8' . "\r\n";
+		
+		$headers .= "From: ". LIBRARYNAME." <".CIRCEMAIL.">" . "\r\n";
+		$headers .= 'X-Mailer: PHP/' . phpversion();
+		$message="
+		<html>
+			<head>
+  				<title>Reserves Request: $title</title>
+			</head>
+			<body>
+			<p>Professor $profLname  has submitted the following course reserves request to ". LIBRARYNAME."</p>
+			<p>Title: $title<br>
+			Author: $author<br>
+		
+		
+		";
+		
+		
+		
+	//	$message= "Professor $profLname  has submitted the following course reserves request to ". LIBRARYNAME.":\n\n";
+	//	$message.="Title: $title \n";
+    //    $message.="Author: $author \n";
 				
 		if ($_POST["useAPI"]=="true"){$message.=$this->getAPIEmailFields();}
 		if ($_POST["useAPI"]=="false"){$message.=$this->getGetEmailFields();}
         
-        $message.="Course: ".$_POST["courseCode"]."\n";
-        $message.="Course Title: ".$_POST["courseTitle"]."\n";
-        $message.="Instructor: ".$_POST["profLname"]."\n";
-        $message.="Instructor Email: ".$_POST["profEmail"]."\n";
-        $message.="Reserve Loan Period: ".$_POST["loanPeriod"]."\n";
-        $message.="Comment: ".$_POST["comment"]."\n\n";    
-        $message.="Please fill this request within 24 hours, and inform the instructor.";		
+        $message.="
+        	<p>Course: ".$_POST["courseCode"]."<br>
+        	Course Title: ".$_POST["courseTitle"]."<br>
+        	Instructor: ".$_POST["profLname"]."<br>
+        	Instructor Email: ".$_POST["profEmail"]."<br>
+        	Reserve Loan Period: ".$_POST["loanPeriod"]."<br>
+        	Comment: ".$_POST["comment"]."</p>
+        	<p>Please fill this request within 24 hours, and inform the instructor.</p>
+        
+       	</body>
+	</html>
+        
+        ";
+
 				
     	if (mail($to, $subject, $message, $headers)){return true;}
     	else {return false;}  	
@@ -331,13 +364,16 @@ class primoReservesRequest{
 		$location=urldecode($_POST["location"]);
 		$library=urldecode($_POST["lib"]);
 		$availability=urldecode($_POST["availability"]);		
-		$url="";
+		$url="http://alliance-primo.hosted.exlibrisgroup.com/primo_library/libweb/action/search.do?"
+        	."fn=search&ct=search&initialSearch=true&mode=Basic&tab=default_tab&indx=1&dum=true&srt=rank"
+        	."&vid=".VID."&frbg=&fctN=facet_tlevel&fctV=available%24%24ILCC&tb=t&vl%28freeText0%29=".$_POST["mmsid"]."&scp.scps=scope%3A%28".SCOPE."%29";
+        	
 		
-		$fields="Call Number: $callnumber \n"
-             ."Location: $location \n"
-             ."Library: $library \n"
-             ."Availability: $availability \n"
-             ."URL: $url\n\n"; 	
+		$fields="Call Number: $callnumber<br>"
+             ."Location: $location<br>"
+             ."Library: $library <br>"
+             ."Availability: $availability <br>"
+             ."URL: $url</p>"; 	
              
         return $fields;
 	
@@ -347,13 +383,19 @@ class primoReservesRequest{
 	
 	function getGetEmailFields(){
 	
-		$url="";
+			if (!empty($_POST["isbn"])){
+				$url="http://alliance-primo.hosted.exlibrisgroup.com/primo_library/libweb/action/search.do?fn=search&ct=search&initialSearch=true&mode=Basic&tab=default_tab&indx=1&dum=true&srt=rank&vid=LCC&frbg=&tb=t&vl%28freeText0%29=".$_POST["isbn"]."&scp.scps=scope%3A%28LCC%29";
+			}
+			else{
+				$url="http://alliance-primo.hosted.exlibrisgroup.com/primo_library/libweb/action/search.do?fn=search&ct=search&initialSearch=true&mode=Basic&tab=default_tab&indx=1&dum=true&srt=rank&vid=LCC&frbg=&tb=t&vl%28freeText0%29=".$_POST["oclc"]."&scp.scps=scope%3A%28LCC%29";
+		
+			}
 		$isbn=urldecode($_POST["isbn"]);
 		$oclc=urldecode($_POST["oclc"]);
 		
-		$fields="ISBN: $isbn \n"
-		."OCLC: $oclc \n"
-		."URL: $url \n";
+		$fields="ISBN: $isbn <br>"
+		."OCLC: $oclc <br>"
+		."URL: $url </p>";
 		
 		return $fields;
 	
