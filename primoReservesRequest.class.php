@@ -150,7 +150,7 @@ class primoReservesRequest{
 	}
 	
 	function get_local_mmsid(){
-		var_dump($_GET);
+		//($_GET);
 		$mmsids=$this->clean(urldecode($_GET["mms_id"]));
 		$mms_array=explode(",",$mmsids);
 		foreach($mms_array as $mms){

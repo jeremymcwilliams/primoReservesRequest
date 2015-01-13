@@ -34,11 +34,7 @@ primoReservesRequest
 
 <li>Set up General Electronic Services link in Alma.</li>
 <code>http://your.domain.com/pathToDirectory/index.php?state=start&mms_id={rfr_dat}&title={rft.title}&isbn={rft.isbn}&oclcnum={rft.oclcnum}&au={rft.au}</code>
-<li>You may need to adjust </li>
-
-
-</ul>
-
-<h4>config.php file</h4>
+<li>You may need to adjust Primo Back Office template settings to get the MMS IDs to populate the link.</li>
+<li>As of Jan 2015, dedupe merged records will not populate the GES link with the MMS ID, hence the other metadata fields.</li>
 
 
